@@ -78,7 +78,8 @@ async function getTransactions(filters = {}) {
         .select(`
             *,
             account:accounts(*),
-            category:categories(*)
+            category:categories(*),
+            ai_category_suggestion
         `)
         .order('transaction_date', { ascending: false });
     
@@ -335,9 +336,10 @@ async function getStatistics(period = 'month') {
     const totalExpenses = expenses.reduce((sum, t) => sum + parseFloat(t.amount || 0), 0);
     
     // Get expenses by category
+    // Use category name from join, or fallback to ai_category_suggestion, or 'Uncategorized'
     const expensesByCategory = {};
     expenses.forEach(t => {
-        const catName = t.category?.name || 'Uncategorized';
+        const catName = t.category?.name || t.ai_category_suggestion || 'Uncategorized';
         expensesByCategory[catName] = (expensesByCategory[catName] || 0) + parseFloat(t.amount || 0);
     });
     
