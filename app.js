@@ -460,19 +460,23 @@ function renderCategoryPieChart(expensesByCategory) {
 
 function renderRecentTransactions(transactions) {
     const container = document.getElementById('recent-transactions-list');
-    container.innerHTML = transactions.slice(0, 10).map(t => `
+    container.innerHTML = transactions.slice(0, 10).map(t => {
+        // Use category name from join, or fallback to ai_category_suggestion, or 'Uncategorized'
+        const categoryName = t.category?.name || t.ai_category_suggestion || 'Uncategorized';
+        return `
         <div class="transaction-item" style="display: flex; justify-content: space-between; padding: 0.75rem; border-bottom: 1px solid var(--border);">
             <div>
                 <div style="font-weight: 500;">${t.description}</div>
                 <div style="font-size: 0.85rem; color: var(--text-light);">
-                    ${t.category?.name || 'Uncategorized'} • ${formatDate(t.transaction_date)}
+                    ${categoryName} • ${formatDate(t.transaction_date)}
                 </div>
             </div>
             <div class="${t.type === 'income' || t.type === 'investment' ? 'amount-income' : 'amount-expense'}">
                 ${t.type === 'income' || t.type === 'investment' ? '+' : '-'}${formatCurrency(Math.abs(t.amount))}
             </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 async function loadTransactions() {
@@ -498,11 +502,14 @@ function filterTransactions() {
 
 function renderTransactionsTable(transactions) {
     const tbody = document.getElementById('transactions-tbody');
-    tbody.innerHTML = transactions.map(t => `
+    tbody.innerHTML = transactions.map(t => {
+        // Use category name from join, or fallback to ai_category_suggestion, or 'Uncategorized'
+        const categoryName = t.category?.name || t.ai_category_suggestion || 'Uncategorized';
+        return `
         <tr>
             <td>${formatDate(t.transaction_date)}</td>
             <td>${t.description}</td>
-            <td>${t.category?.name || 'Uncategorized'}</td>
+            <td>${categoryName}</td>
             <td>${t.account?.name || 'Unknown'}</td>
             <td class="text-right ${t.type === 'income' ? 'amount-income' : t.type === 'investment' ? 'amount-income' : 'amount-expense'}">
                 ${t.type === 'income' || t.type === 'investment' ? '+' : '-'}${formatCurrency(Math.abs(t.amount))}
@@ -512,7 +519,8 @@ function renderTransactionsTable(transactions) {
                 <button class="btn btn-danger" onclick="deleteTransaction('${t.id}')">Delete</button>
             </td>
         </tr>
-    `).join('');
+        `;
+    }).join('');
 }
 
 async function loadAccounts() {

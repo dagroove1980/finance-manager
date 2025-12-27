@@ -177,7 +177,9 @@ export default async function handler(req, res) {
             if (update.category_id) {
                 updateData.category_id = update.category_id;
             } else {
-                // If no category_id found, set to null to clear old category
+                // If no category_id found, log it for debugging
+                console.warn(`No category_id found for category: "${update.ai_category_suggestion}"`);
+                // Set to null to clear old category
                 updateData.category_id = null;
             }
 
@@ -192,6 +194,9 @@ export default async function handler(req, res) {
                 console.error(`Error updating transaction ${update.id}:`, updateError);
             }
         }
+        
+        // Log category map for debugging
+        console.log('Category map:', Object.keys(categoryMap));
 
         return res.json({
             message: `Successfully recategorized ${updatedCount} transaction(s)`,
