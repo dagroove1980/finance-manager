@@ -73,21 +73,55 @@ export default async function handler(req, res) {
                 
                 // Call categorization API with ORIGINAL Hebrew description (categorization works with Hebrew)
                 // The translation is just for display, but categorization needs the original Hebrew text
-                const categorizeResponse = await fetch(`${req.headers.origin || 'http://localhost:3000'}/api/categorize-transaction`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        description: originalDescription, // Use original Hebrew for categorization
-                        amount: tx.amount,
-                        merchant: tx.merchant,
-                        account_type: import_source
-                    })
-                });
+                try {
+                    // Construct API URL - use Vercel URL in production, localhost in dev
+                    const apiUrl = process.env.VERCEL_URL 
+                        ? `https://${process.env.VERCEL_URL}/api/categorize-transaction`
+                        : `${req.headers.origin || 'http://localhost:3000'}/api/categorize-transaction`;
+                    
+                    const categorizeResponse = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            description: originalDescription, // Use original Hebrew for categorization
+                            amount: tx.amount,
+                            merchant: tx.merchant,
+                            account_type: import_source
+                        })
+                    });
 
-                if (categorizeResponse.ok) {
-                    const categoryData = await categorizeResponse.json();
-                    tx.ai_category_suggestion = categoryData.category;
-                    tx.ai_confidence = categoryData.confidence;
+                    if (categorizeResponse.ok) {
+                        const categoryData = await categorizeResponse.json();
+                        tx.ai_category_suggestion = categoryData.category;
+                        tx.ai_confidence = categoryData.confidence;
+                    } else {
+                        console.warn(`Categorization API failed for transaction: ${originalDescription.substring(0, 50)}`);
+                        // Fallback: use keyword-based categorization directly
+                        const keywordResult = categorizeByKeywords(originalDescription, tx.merchant);
+                        tx.ai_category_suggestion = keywordResult.category;
+                        tx.ai_confidence = keywordResult.confidence || 0.7;
+                    }
+                } catch (error) {
+                    console.error('Categorization error:', error);
+                    // Fallback: use keyword-based categorization directly (import the function)
+                    // For now, we'll categorize inline
+                    const desc = (originalDescription + ' ' + (tx.merchant || '')).toLowerCase();
+                    
+                    // Simple keyword matching as fallback
+                    if (desc.includes('מקס איט') || desc.includes('max')) {
+                        tx.ai_category_suggestion = 'Credit Card Payment';
+                    } else if (desc.includes('העברה אל: יפעת') || desc.includes('יפעת קט')) {
+                        tx.ai_category_suggestion = 'Child Care';
+                    } else if (desc.includes('העברה אל: שמרית') || desc.includes('שמרית פרץ')) {
+                        tx.ai_category_suggestion = 'Child Care';
+                    } else if (desc.includes('העברה אל: גואנה') || desc.includes('גואנה סאיבה')) {
+                        tx.ai_category_suggestion = 'Rent';
+                    } else if (desc.includes('העברה אל: ועד') || desc.includes('צייטלין')) {
+                        tx.ai_category_suggestion = 'Bills & Utilities';
+                    } else {
+                        tx.ai_category_suggestion = 'Uncategorized';
+                    }
+                    tx.ai_confidence = 0.7;
                 }
                 
                 // Keep original Hebrew description (don't replace with translation)
