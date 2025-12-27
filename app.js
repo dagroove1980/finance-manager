@@ -65,6 +65,11 @@ function setupEventListeners() {
         alert('Add transaction feature coming soon!');
     });
     
+    const recategorizeBtn = document.getElementById('recategorize-btn');
+    if (recategorizeBtn) {
+        recategorizeBtn.addEventListener('click', recategorizeTransactions);
+    }
+    
     document.getElementById('add-account-btn').addEventListener('click', () => {
         // TODO: Open add account modal
         alert('Add account feature coming soon!');
