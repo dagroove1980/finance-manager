@@ -160,7 +160,7 @@ export default async function handler(req, res) {
         // Update account's last_import_date and balance
         if (data && data.length > 0) {
             const today = new Date().toISOString().split('T')[0];
-            const updateData = { last_import_date: today };
+            const updateData = { last_import_date: today }; // Default to today, will be overridden for Leumi
             
             // For IBI imports, update balance with total estimated value
             if (import_source === 'ibi_csv' && categorizedTransactions._metadata) {
@@ -177,10 +177,15 @@ export default async function handler(req, res) {
             
             // For Leumi imports, update balance with latest balance from file
             // Also update last_import_date to the date of the most recent transaction
-            if (import_source === 'leumi_csv' && categorizedTransactions._metadata && categorizedTransactions._metadata.latestBalance !== undefined) {
-                updateData.balance = categorizedTransactions._metadata.latestBalance;
-                // Find the most recent transaction date
-                if (data && data.length > 0) {
+            if (import_source === 'leumi_csv' && categorizedTransactions._metadata) {
+                const metadata = categorizedTransactions._metadata;
+                if (metadata.latestBalance !== undefined) {
+                    updateData.balance = metadata.latestBalance;
+                }
+                // Use latestTransactionDate from metadata if available, otherwise find from inserted data
+                if (metadata.latestTransactionDate) {
+                    updateData.last_import_date = metadata.latestTransactionDate;
+                } else if (data && data.length > 0) {
                     const sortedByDate = [...data].sort((a, b) => 
                         new Date(b.transaction_date) - new Date(a.transaction_date)
                     );
@@ -357,6 +362,7 @@ function parseLeumiHTML(htmlContent) {
     // Structure: תאריך (date), תאריך ערך (value date), תיאור (description), אסמכתא (reference), בחובה (debit), בזכות (credit), היתרה בש"ח (balance)
     const transactions = [];
     let latestBalance = null; // Track the most recent balance (first transaction is newest)
+    let latestTransactionDate = null; // Track the most recent transaction date
     
     // Extract table rows
     const rowMatches = htmlContent.match(/<tr[^>]*>(.*?)<\/tr>/gis) || [];
@@ -545,9 +551,12 @@ function parseLeumiHTML(htmlContent) {
         });
     }
     
-    // Attach metadata with latest balance for account update
-    if (latestBalance !== null) {
-        transactions._metadata = { latestBalance };
+    // Attach metadata with latest balance and date for account update
+    if (latestBalance !== null || latestTransactionDate !== null) {
+        transactions._metadata = { 
+            latestBalance: latestBalance,
+            latestTransactionDate: latestTransactionDate
+        };
     }
     
     return transactions;
