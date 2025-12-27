@@ -71,50 +71,11 @@ export default async function handler(req, res) {
                     }
                 }
                 
-                // Categorize transaction directly (no HTTP call needed - both functions in same codebase)
-                // Import the categorization function directly
-                const { categorizeTransaction } = await import('./categorize-transaction.js');
-                
-                try {
-                    // Call categorization function directly
-                    const categoryResult = await categorizeTransaction({
-                        description: originalDescription,
-                        amount: tx.amount,
-                        merchant: tx.merchant,
-                        account_type: import_source
-                    });
-                    
-                    tx.ai_category_suggestion = categoryResult.category;
-                    tx.ai_confidence = categoryResult.confidence || 0.7;
-                } catch (error) {
-                    console.error('Categorization error:', error);
-                    // Fallback: use keyword-based categorization directly
-                    const desc = (originalDescription + ' ' + (tx.merchant || '')).toLowerCase();
-                    
-                    // Transfer pattern matching
-                    const transferMatch = desc.match(/העברה\s+(?:אל|ל|מאת)[:\s]+([א-ת\s]+?)(?:\d|$)/);
-                    if (transferMatch) {
-                        const recipient = transferMatch[1].trim();
-                        if (recipient.includes('גואנה') || recipient.includes('סאיבה')) {
-                            tx.ai_category_suggestion = 'Rent';
-                        } else if (recipient.includes('שמרית') || recipient.includes('פרץ')) {
-                            tx.ai_category_suggestion = 'Child Care';
-                        } else if (recipient.includes('יפעת') || recipient.includes('קטיש') || recipient.includes('קטיעי') || (recipient.includes('יפעת') && recipient.includes('קט'))) {
-                            tx.ai_category_suggestion = 'Child Care';
-                        } else if (recipient.includes('ינאי') && recipient.includes('שבת')) {
-                            tx.ai_category_suggestion = 'Child Care';
-                        } else if (recipient.includes('ועד') || recipient.includes('צייטלין')) {
-                            tx.ai_category_suggestion = 'Bills & Utilities';
-                        } else {
-                            tx.ai_category_suggestion = 'Uncategorized';
-                        }
-                    } else if (desc.includes('מקס איט') || desc.includes('max')) {
-                        tx.ai_category_suggestion = 'Credit Card Payment';
-                    } else {
-                        tx.ai_category_suggestion = 'Uncategorized';
-                    }
-                    tx.ai_confidence = 0.7;
-                }
+                // Categorize transaction using keyword-based categorization (fast and reliable)
+                // This avoids HTTP calls and works immediately
+                const categoryResult = categorizeTransactionByKeywords(originalDescription, tx.merchant);
+                tx.ai_category_suggestion = categoryResult.category;
+                tx.ai_confidence = categoryResult.confidence || 0.7;
                 
                 // Keep original Hebrew description (don't replace with translation)
                 // Translation is available in notes if needed, but description stays in Hebrew
@@ -245,6 +206,77 @@ export default async function handler(req, res) {
         console.error('Import error:', error);
         return res.status(500).json({ error: 'Import failed', details: error.message });
     }
+}
+
+// Categorization function (copied from categorize-transaction.js for direct use)
+function categorizeTransactionByKeywords(description, merchant) {
+    const desc = (description + ' ' + (merchant || '')).toLowerCase();
+    
+    // First, check for recipient-based categorization (for transfers)
+    const transferMatch = desc.match(/העברה\s+(?:אל|ל|מאת)[:\s]+([א-ת\s]+?)(?:\d|$)/);
+    if (transferMatch) {
+        const recipient = transferMatch[1].trim();
+        
+        // Rent - Johanna/Yana Saiba (גואנה סאיבה)
+        if (recipient.includes('גואנה') || recipient.includes('סאיבה')) {
+            return { category: 'Rent', confidence: 0.95 };
+        }
+        
+        // Child Care - Shimrit Peretz (שמרית פרץ) - 3 small kids
+        if (recipient.includes('שמרית') || recipient.includes('פרץ')) {
+            return { category: 'Child Care', confidence: 0.95 };
+        }
+        
+        // Child Care - Yifat Katish/Katiai (יפעת קטיש/קטיעי) - 3 small kids
+        if (recipient.includes('יפעת') || recipient.includes('קטיש') || recipient.includes('קטיעי') || 
+            (recipient.includes('יפעת') && recipient.includes('קט'))) {
+            return { category: 'Child Care', confidence: 0.95 };
+        }
+        
+        // Child Care - Yanai Shabat (ינאי שבת) - pocket money for Yanai
+        if (recipient.includes('ינאי') && recipient.includes('שבת')) {
+            return { category: 'Child Care', confidence: 0.95 };
+        }
+        
+        // Building Fees - Building Committee (ועד צייטלין)
+        if (recipient.includes('ועד') || recipient.includes('צייטלין')) {
+            return { category: 'Bills & Utilities', confidence: 0.95 };
+        }
+        
+        // Parking - Menachem
+        if (recipient.includes('מנחם') || recipient.includes('שרלאוב') || recipient.includes('שרונה') || recipient.includes('חניה')) {
+            return { category: 'Transportation', confidence: 0.95 };
+        }
+        
+        // Max transfers - Credit Card Payment
+        if (recipient.includes('מקס איט') || recipient.includes('מקס') || recipient.includes('max')) {
+            return { category: 'Credit Card Payment', confidence: 0.95 };
+        }
+        
+        // Other Yanai transfers - Child Care
+        if (recipient.includes('ינאי') && !recipient.includes('טייכמן')) {
+            return { category: 'Child Care', confidence: 0.9 };
+        }
+    }
+    
+    // Keyword-based categorization
+    if (desc.includes('מקס איט') || desc.includes('max') || desc.includes('מקס איט פיננ')) {
+        return { category: 'Credit Card Payment', confidence: 0.7 };
+    }
+    if (desc.includes('הפניקס')) {
+        return { category: 'Savings Withdrawal', confidence: 0.7 };
+    }
+    if (desc.includes('משכורת') || desc.includes('הפועלים')) {
+        return { category: 'Salary', confidence: 0.7 };
+    }
+    if (desc.includes('הוראת קבע')) {
+        return { category: 'Child Care', confidence: 0.7 };
+    }
+    if (desc.includes('עמל')) {
+        return { category: 'Bank Fees', confidence: 0.7 };
+    }
+    
+    return { category: 'Uncategorized', confidence: 0.5 };
 }
 
 function parseCSV(csvData, source) {
