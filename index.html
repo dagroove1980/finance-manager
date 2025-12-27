@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Manager - Personal Finance Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>💰 Finance Manager</h1>
+                <nav class="nav-tabs">
+                    <button class="nav-tab active" data-page="dashboard">Dashboard</button>
+                    <button class="nav-tab" data-page="transactions">Transactions</button>
+                    <button class="nav-tab" data-page="accounts">Accounts</button>
+                    <button class="nav-tab" data-page="reports">Reports</button>
+                    <button class="nav-tab" data-page="insights">Insights</button>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Page -->
+            <div id="dashboard-page" class="page active">
+                <div class="page-header">
+                    <h2>Financial Overview</h2>
+                    <div class="date-range-selector">
+                        <select id="dashboard-period">
+                            <option value="month">This Month</option>
+                            <option value="quarter">This Quarter</option>
+                            <option value="year">This Year</option>
+                            <option value="all">All Time</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Import Status Widget -->
+                <div class="import-status-widget" id="import-status-widget">
+                    <!-- Populated by JavaScript -->
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="summary-cards">
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">💵</span>
+                            <h3>Total Assets</h3>
+                        </div>
+                        <div class="card-value" id="total-assets">₪0</div>
+                        <div class="card-change positive" id="assets-change">+0%</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">📈</span>
+                            <h3>Monthly Income</h3>
+                        </div>
+                        <div class="card-value" id="monthly-income">₪0</div>
+                        <div class="card-change" id="income-change">vs last month</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">📉</span>
+                            <h3>Monthly Expenses</h3>
+                        </div>
+                        <div class="card-value" id="monthly-expenses">₪0</div>
+                        <div class="card-change" id="expenses-change">vs last month</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">
+                            <span class="card-icon">💸</span>
+                            <h3>Net Flow</h3>
+                        </div>
+                        <div class="card-value" id="net-flow">₪0</div>
+                        <div class="card-change" id="net-flow-change">this month</div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <h3>Expense Trends</h3>
+                        <canvas id="expense-trend-chart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Expenses by Category</h3>
+                        <canvas id="category-pie-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Account Balances -->
+                <div class="accounts-section">
+                    <h3>Account Balances</h3>
+                    <div class="accounts-grid" id="accounts-grid">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Recent Transactions -->
+                <div class="recent-transactions">
+                    <h3>Recent Transactions</h3>
+                    <div class="transactions-list" id="recent-transactions-list">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Transactions Page -->
+            <div id="transactions-page" class="page">
+                <div class="page-header">
+                    <h2>All Transactions</h2>
+                    <div class="page-actions">
+                        <button class="btn btn-primary" id="import-transactions-btn">Import CSV</button>
+                        <button class="btn btn-secondary" id="add-transaction-btn">Add Transaction</button>
+                    </div>
+                </div>
+
+                <!-- Filters -->
+                <div class="filters">
+                    <input type="text" id="search-transactions" placeholder="Search transactions...">
+                    <select id="filter-account">
+                        <option value="">All Accounts</option>
+                    </select>
+                    <select id="filter-category">
+                        <option value="">All Categories</option>
+                    </select>
+                    <select id="filter-type">
+                        <option value="">All Types</option>
+                        <option value="income">Income</option>
+                        <option value="expense">Expense</option>
+                        <option value="transfer">Transfer</option>
+                    </select>
+                    <input type="date" id="filter-date-from" placeholder="From">
+                    <input type="date" id="filter-date-to" placeholder="To">
+                </div>
+
+                <!-- Transactions Table -->
+                <div class="transactions-table-container">
+                    <table class="transactions-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Category</th>
+                                <th>Account</th>
+                                <th class="text-right">Amount</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-tbody">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Accounts Page -->
+            <div id="accounts-page" class="page">
+                <div class="page-header">
+                    <h2>Accounts</h2>
+                    <button class="btn btn-primary" id="add-account-btn">Add Account</button>
+                </div>
+                <div class="accounts-list" id="accounts-list">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Reports Page -->
+            <div id="reports-page" class="page">
+                <div class="page-header">
+                    <h2>Monthly Reports</h2>
+                    <div class="date-selector">
+                        <select id="report-month">
+                            <!-- Populated by JavaScript -->
+                        </select>
+                        <select id="report-year">
+                            <!-- Populated by JavaScript -->
+                        </select>
+                    </div>
+                </div>
+                <div id="report-content">
+                    <!-- Report content populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Insights Page -->
+            <div id="insights-page" class="page">
+                <div class="page-header">
+                    <h2>AI Insights & Recommendations</h2>
+                </div>
+                <div class="insights-list" id="insights-list">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="import-modal" class="modal">
+        <div class="modal-content import-modal-content">
+            <span class="close">&times;</span>
+            <h2>📥 Import Transactions</h2>
+            <p class="modal-subtitle">Import your bank statements to automatically categorize and track expenses</p>
+            
+            <form id="import-form">
+                <div class="form-group">
+                    <label>Select Account</label>
+                    <select id="import-account" required>
+                        <option value="">Choose an account...</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Import Source</label>
+                    <select id="import-source" required>
+                        <option value="">Select source...</option>
+                        <option value="leumi_csv">🏦 Leumi Bank</option>
+                        <option value="max_csv">💳 Max Credit Card</option>
+                        <option value="phoenix_csv">💰 Phoenix Savings</option>
+                        <option value="ibi_csv">📈 IBI / Fiverr Vested</option>
+                        <option value="generic_csv">📄 Generic CSV</option>
+                    </select>
+                </div>
+
+                <!-- Bank Links Section -->
+                <div id="bank-links-section" class="bank-links-section" style="display: none;">
+                    <div class="bank-link-card">
+                        <div class="bank-link-header">
+                            <span class="bank-icon">🔗</span>
+                            <h4>Download CSV from Bank</h4>
+                        </div>
+                        <div id="bank-link-content" class="bank-link-content">
+                            <!-- Dynamically populated based on selected source -->
+                        </div>
+                    </div>
+                </div>
+                
+                    <div class="form-group">
+                    <label>File Upload</label>
+                    <div class="file-upload-area" id="file-upload-area">
+                        <input type="file" id="csv-file" accept=".csv,.xlsx,.xls" required style="display: none;">
+                        <div class="file-upload-placeholder">
+                            <span class="upload-icon">📎</span>
+                            <span class="upload-text">Click to select file or drag and drop</span>
+                            <span class="upload-hint">Supported formats: .csv, .xlsx, .xls</span>
+                        </div>
+                        <div class="file-selected" id="file-selected" style="display: none;">
+                            <span class="file-icon">✅</span>
+                            <span class="file-name" id="file-name"></span>
+                            <button type="button" class="file-remove" id="file-remove">✕</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancel-import">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="submit-import">
+                        <span class="btn-icon">📤</span>
+                        Import Transactions
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="config.js"></script>
+    <script src="supabase.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+
