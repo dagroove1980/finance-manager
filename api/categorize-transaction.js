@@ -105,7 +105,8 @@ function categorizeByKeywords(description, merchant) {
     
     // First, check for recipient-based categorization (for transfers)
     // Pattern: "העברה אל: [name]" or "העברה אל [name]" or "העברה ל [name]"
-    const transferMatch = desc.match(/העברה\s+(?:אל|ל)[:\s]+([^\d]+?)(?:\s+\d|$)/);
+    // Improved pattern: capture Hebrew characters and spaces before account numbers
+    const transferMatch = desc.match(/העברה\s+(?:אל|ל|מאת)[:\s]+([א-ת\s]+?)(?:\d|$)/);
     if (transferMatch) {
         const recipient = transferMatch[1].trim();
         
@@ -128,7 +129,10 @@ function categorizeByKeywords(description, merchant) {
         }
         
         // Child Care - Yifat Katish/Katiai (יפעת קטיש/קטיעי) - 3 small kids
-        if (recipient.includes('יפעת') || recipient.includes('קטיש') || recipient.includes('קטיעי') || recipient.includes('yifat') || recipient.includes('katish')) {
+        // Handle partial matches like "יפעת קט" (truncated)
+        if (recipient.includes('יפעת') || recipient.includes('קטיש') || recipient.includes('קטיעי') || 
+            (recipient.includes('יפעת') && recipient.includes('קט')) || 
+            recipient.includes('yifat') || recipient.includes('katish')) {
             return {
                 category: 'Child Care',
                 confidence: 0.95,
@@ -160,6 +164,15 @@ function categorizeByKeywords(description, merchant) {
                 category: 'Transportation',
                 confidence: 0.95,
                 reasoning: 'Transfer for parking fees'
+            };
+        }
+        
+        // Max transfers (credits FROM Max) - Credit Card Payment
+        if (recipient.includes('מקס איט') || recipient.includes('מקס') || recipient.includes('max')) {
+            return {
+                category: 'Credit Card Payment',
+                confidence: 0.95,
+                reasoning: 'Transfer from/to Max (Credit card)'
             };
         }
         
