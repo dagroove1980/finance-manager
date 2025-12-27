@@ -139,8 +139,11 @@ export default async function handler(req, res) {
             const categoryName = categoryResult.category.toLowerCase();
             const categoryId = categoryMap[categoryName] || null;
 
-            // Only update if category changed
-            if (categoryId) {
+            console.log(`Transaction: "${tx.description.substring(0, 50)}" -> Category: "${categoryResult.category}" -> ID: ${categoryId}`);
+
+            // Update even if category_id is null (to set ai_category_suggestion)
+            // But prefer to set category_id if available
+            if (categoryResult.category !== 'Uncategorized') {
                 updates.push({
                     id: tx.id,
                     category_id: categoryId,
@@ -152,14 +155,23 @@ export default async function handler(req, res) {
 
         // Batch update transactions
         for (const update of updates) {
+            const updateData = {
+                ai_category_suggestion: update.ai_category_suggestion,
+                ai_confidence: update.ai_confidence,
+                updated_at: new Date().toISOString()
+            };
+            
+            // Only set category_id if we found a matching category
+            if (update.category_id) {
+                updateData.category_id = update.category_id;
+            } else {
+                // If no category_id found, set to null to clear old category
+                updateData.category_id = null;
+            }
+
             const { error: updateError } = await supabase
                 .from('transactions')
-                .update({
-                    category_id: update.category_id,
-                    ai_category_suggestion: update.ai_category_suggestion,
-                    ai_confidence: update.ai_confidence,
-                    updated_at: new Date().toISOString()
-                })
+                .update(updateData)
                 .eq('id', update.id);
 
             if (!updateError) {
