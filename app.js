@@ -584,7 +584,7 @@ async function loadInsights() {
     `).join('');
 }
 
-async function recategorizeTransactions() {
+window.recategorizeTransactions = async function() {
     const accountId = accounts.find(acc => acc.name === 'Leumi Bank Account')?.id;
     if (!accountId) {
         alert('Leumi Bank Account not found');
@@ -592,9 +592,13 @@ async function recategorizeTransactions() {
     }
 
     const btn = document.getElementById('recategorize-btn');
+    if (!btn) {
+        alert('Recategorize button not found');
+        return;
+    }
     const originalText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recategorizing...';
+    btn.innerHTML = 'Recategorizing...';
 
     try {
         const response = await fetch('/api/recategorize-transactions', {
@@ -623,7 +627,7 @@ async function recategorizeTransactions() {
         btn.disabled = false;
         btn.innerHTML = originalText;
     }
-}
+};
 
 async function handleImport(e) {
     e.preventDefault();
