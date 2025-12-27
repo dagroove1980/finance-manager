@@ -71,53 +71,45 @@ export default async function handler(req, res) {
                     }
                 }
                 
-                // Call categorization API with ORIGINAL Hebrew description (categorization works with Hebrew)
-                // The translation is just for display, but categorization needs the original Hebrew text
+                // Categorize transaction directly (no HTTP call needed - both functions in same codebase)
+                // Import the categorization function directly
+                const { categorizeTransaction } = await import('./categorize-transaction.js');
+                
                 try {
-                    // Construct API URL - use Vercel URL in production, localhost in dev
-                    const apiUrl = process.env.VERCEL_URL 
-                        ? `https://${process.env.VERCEL_URL}/api/categorize-transaction`
-                        : `${req.headers.origin || 'http://localhost:3000'}/api/categorize-transaction`;
-                    
-                    const categorizeResponse = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            description: originalDescription, // Use original Hebrew for categorization
-                            amount: tx.amount,
-                            merchant: tx.merchant,
-                            account_type: import_source
-                        })
+                    // Call categorization function directly
+                    const categoryResult = await categorizeTransaction({
+                        description: originalDescription,
+                        amount: tx.amount,
+                        merchant: tx.merchant,
+                        account_type: import_source
                     });
-
-                    if (categorizeResponse.ok) {
-                        const categoryData = await categorizeResponse.json();
-                        tx.ai_category_suggestion = categoryData.category;
-                        tx.ai_confidence = categoryData.confidence;
-                    } else {
-                        console.warn(`Categorization API failed for transaction: ${originalDescription.substring(0, 50)}`);
-                        // Fallback: use keyword-based categorization directly
-                        const keywordResult = categorizeByKeywords(originalDescription, tx.merchant);
-                        tx.ai_category_suggestion = keywordResult.category;
-                        tx.ai_confidence = keywordResult.confidence || 0.7;
-                    }
+                    
+                    tx.ai_category_suggestion = categoryResult.category;
+                    tx.ai_confidence = categoryResult.confidence || 0.7;
                 } catch (error) {
                     console.error('Categorization error:', error);
-                    // Fallback: use keyword-based categorization directly (import the function)
-                    // For now, we'll categorize inline
+                    // Fallback: use keyword-based categorization directly
                     const desc = (originalDescription + ' ' + (tx.merchant || '')).toLowerCase();
                     
-                    // Simple keyword matching as fallback
-                    if (desc.includes('מקס איט') || desc.includes('max')) {
+                    // Transfer pattern matching
+                    const transferMatch = desc.match(/העברה\s+(?:אל|ל|מאת)[:\s]+([א-ת\s]+?)(?:\d|$)/);
+                    if (transferMatch) {
+                        const recipient = transferMatch[1].trim();
+                        if (recipient.includes('גואנה') || recipient.includes('סאיבה')) {
+                            tx.ai_category_suggestion = 'Rent';
+                        } else if (recipient.includes('שמרית') || recipient.includes('פרץ')) {
+                            tx.ai_category_suggestion = 'Child Care';
+                        } else if (recipient.includes('יפעת') || recipient.includes('קטיש') || recipient.includes('קטיעי') || (recipient.includes('יפעת') && recipient.includes('קט'))) {
+                            tx.ai_category_suggestion = 'Child Care';
+                        } else if (recipient.includes('ינאי') && recipient.includes('שבת')) {
+                            tx.ai_category_suggestion = 'Child Care';
+                        } else if (recipient.includes('ועד') || recipient.includes('צייטלין')) {
+                            tx.ai_category_suggestion = 'Bills & Utilities';
+                        } else {
+                            tx.ai_category_suggestion = 'Uncategorized';
+                        }
+                    } else if (desc.includes('מקס איט') || desc.includes('max')) {
                         tx.ai_category_suggestion = 'Credit Card Payment';
-                    } else if (desc.includes('העברה אל: יפעת') || desc.includes('יפעת קט')) {
-                        tx.ai_category_suggestion = 'Child Care';
-                    } else if (desc.includes('העברה אל: שמרית') || desc.includes('שמרית פרץ')) {
-                        tx.ai_category_suggestion = 'Child Care';
-                    } else if (desc.includes('העברה אל: גואנה') || desc.includes('גואנה סאיבה')) {
-                        tx.ai_category_suggestion = 'Rent';
-                    } else if (desc.includes('העברה אל: ועד') || desc.includes('צייטלין')) {
-                        tx.ai_category_suggestion = 'Bills & Utilities';
                     } else {
                         tx.ai_category_suggestion = 'Uncategorized';
                     }

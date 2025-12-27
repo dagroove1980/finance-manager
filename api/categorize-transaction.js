@@ -1,6 +1,100 @@
 // Vercel serverless function for AI-powered transaction categorization
 // Uses OpenAI API to categorize transactions intelligently
 
+// Export the categorization function for direct use
+export async function categorizeTransaction({ description, amount, merchant, account_type }) {
+    if (!description) {
+        return categorizeByKeywords(description, merchant);
+    }
+
+    // Check if OpenAI API key is configured
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (!openaiKey) {
+        // Fallback to keyword-based categorization
+        return categorizeByKeywords(description, merchant);
+    }
+
+    try {
+        // Use OpenAI to categorize
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${openaiKey}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-3.5-turbo',
+                messages: [
+                    {
+                        role: 'system',
+                        content: `You are a financial categorization assistant. Categorize transactions into one of these categories:
+- Food & Dining (restaurants, groceries, cafes)
+- Transportation (gas, parking, taxis, public transport)
+- Shopping (retail stores, online shopping)
+- Bills & Utilities (electricity, water, internet, phone)
+- Rent (rental payments)
+- Child Care (daycare, babysitter, nanny, standing orders for childcare)
+- Credit Card Payment (payments to credit card companies like Max)
+- Bank Fees (bank commissions and fees)
+- Savings Withdrawal (withdrawals from savings accounts like Phoenix)
+- Healthcare (doctor, pharmacy, medical)
+- Entertainment (movies, streaming, events)
+- Education (courses, books, training)
+- Travel (flights, hotels, vacation)
+- Salary (income from employment)
+- Investment Returns (dividends, interest)
+- Other
+
+Respond with JSON: {"category": "Category Name", "confidence": 0.0-1.0, "reasoning": "brief explanation"}`
+                    },
+                    {
+                        role: 'user',
+                        content: `Categorize this transaction:
+Description: ${description}
+${merchant ? `Merchant: ${merchant}` : ''}
+${amount ? `Amount: ${amount} ILS` : ''}
+${account_type ? `Account: ${account_type}` : ''}`
+                    }
+                ],
+                temperature: 0.3,
+                max_tokens: 150
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`OpenAI API error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices[0].message.content;
+        
+        // Parse JSON response
+        let result;
+        try {
+            result = JSON.parse(content);
+        } catch (e) {
+            // If not valid JSON, try to extract category name
+            const categoryMatch = content.match(/category["\s:]+["']?([^"'\n]+)["']?/i);
+            result = {
+                category: categoryMatch ? categoryMatch[1] : 'Other',
+                confidence: 0.7,
+                reasoning: 'AI categorization'
+            };
+        }
+
+        return {
+            category: result.category,
+            confidence: result.confidence || 0.8,
+            reasoning: result.reasoning || 'AI-powered categorization'
+        };
+
+    } catch (error) {
+        console.error('OpenAI categorization error:', error);
+        // Fallback to keyword-based categorization
+        return categorizeByKeywords(description, merchant);
+    }
+}
+
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
