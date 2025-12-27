@@ -584,6 +584,47 @@ async function loadInsights() {
     `).join('');
 }
 
+async function recategorizeTransactions() {
+    const accountId = accounts.find(acc => acc.name === 'Leumi Bank Account')?.id;
+    if (!accountId) {
+        alert('Leumi Bank Account not found');
+        return;
+    }
+
+    const btn = document.getElementById('recategorize-btn');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Recategorizing...';
+
+    try {
+        const response = await fetch('/api/recategorize-transactions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                account_id: accountId,
+                import_source: 'leumi_csv'
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: 'Recategorization failed' }));
+            throw new Error(errorData.error || 'Recategorization failed');
+        }
+
+        const result = await response.json();
+        alert(`✅ Successfully recategorized ${result.updated} transaction(s)!`);
+        
+        // Reload transactions to show updated categories
+        await loadTransactions();
+    } catch (error) {
+        console.error('Recategorization error:', error);
+        alert('Failed to recategorize transactions: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+    }
+}
+
 async function handleImport(e) {
     e.preventDefault();
     
