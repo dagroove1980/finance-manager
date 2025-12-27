@@ -538,6 +538,11 @@ function parseLeumiHTML(htmlContent) {
             }
         }
         
+        // Track latest transaction date (transactions are usually ordered newest first)
+        if (date && (!latestTransactionDate || new Date(date) > new Date(latestTransactionDate))) {
+            latestTransactionDate = date;
+        }
+        
         // Generate consistent import_id: date + reference + amount (no row index for stability)
         // This ensures same transaction always gets same ID, even if file structure changes
         const importId = `leumi_${date}_${reference || 'no_ref'}_${Math.abs(amount).toFixed(2)}`;
