@@ -259,10 +259,13 @@ function categorizeTransactionByKeywords(description, merchant) {
         }
     }
     
-    // Keyword-based categorization
-    if (desc.includes('מקס איט') || desc.includes('max') || desc.includes('מקס איט פיננ')) {
-        return { category: 'Credit Card Payment', confidence: 0.7 };
-    }
+        // Keyword-based categorization
+        // Hardcode common patterns for Max credit card - check multiple ways
+        const hasMax = desc.includes('מקס איט') || desc.includes('max') || desc.includes('מקס איט פיננ') || 
+                      desc.includes('מקס') || desc.startsWith('מקס') || desc.indexOf('מקס') >= 0;
+        if (hasMax) {
+            return { category: 'Credit Card Payment', confidence: 0.7 };
+        }
     if (desc.includes('הפניקס')) {
         return { category: 'Savings Withdrawal', confidence: 0.7 };
     }

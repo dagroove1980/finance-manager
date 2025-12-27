@@ -60,7 +60,9 @@ export default async function handler(req, res) {
         }
         
         // Keyword-based categorization
-        if (desc.includes('מקס איט') || desc.includes('max') || desc.includes('מקס איט פיננ')) {
+        // Hardcode common patterns for Max credit card
+        if (desc.includes('מקס איט') || desc.includes('max') || desc.includes('מקס איט פיננ') || 
+            desc.includes('מקס') || desc.startsWith('מקס') || desc.indexOf('מקס') >= 0) {
             return { category: 'Credit Card Payment', confidence: 0.7 };
         }
         if (desc.includes('הפניקס')) {
