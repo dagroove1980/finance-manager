@@ -210,6 +210,16 @@ export default async function handler(req, res) {
 
 // Categorization function (copied from categorize-transaction.js for direct use)
 function categorizeTransactionByKeywords(description, merchant) {
+    // HARDCODED: Check for Max credit card transactions first (most common pattern)
+    if (description && (
+        description.includes('מקס איט') || 
+        description.includes('מקס') ||
+        description.toLowerCase().includes('מקס') ||
+        description.toLowerCase().includes('max')
+    )) {
+        return { category: 'Credit Card Payment', confidence: 0.9 };
+    }
+    
     const desc = (description + ' ' + (merchant || '')).toLowerCase();
     
     // First, check for recipient-based categorization (for transfers)

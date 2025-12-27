@@ -195,6 +195,20 @@ ${account_type ? `Account: ${account_type}` : ''}`
 }
 
 function categorizeByKeywords(description, merchant) {
+    // HARDCODED: Check for Max credit card transactions first (most common pattern)
+    if (description && (
+        description.includes('מקס איט') || 
+        description.includes('מקס') ||
+        description.toLowerCase().includes('מקס') ||
+        description.toLowerCase().includes('max')
+    )) {
+        return {
+            category: 'Credit Card Payment',
+            confidence: 0.9,
+            reasoning: 'Max credit card transaction (hardcoded pattern)'
+        };
+    }
+    
     const desc = (description + ' ' + (merchant || '')).toLowerCase();
     
     // First, check for recipient-based categorization (for transfers)
