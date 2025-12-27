@@ -223,9 +223,11 @@ function renderAccountBalances(accounts) {
         if (acc.last_import_date) {
             const date = new Date(acc.last_import_date);
             const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-            dateText = `<div class="account-balance-date">Last known: ${formattedDate}</div>`;
+            dateText = `<div class="account-balance-date">Last updated: ${formattedDate}</div>`;
         } else if (acc.import_source) {
             dateText = `<div class="account-balance-date">No import yet</div>`;
+        } else {
+            dateText = `<div class="account-balance-date">Manual entry</div>`;
         }
         
         return `
@@ -631,8 +633,16 @@ window.recategorizeTransactions = async function() {
         const result = await response.json();
         alert(`✅ Successfully recategorized ${result.updated} transaction(s)!`);
         
+        // Reload accounts to get updated balances
+        accounts = await window.supabaseAPI.getAccounts();
+        
         // Reload transactions to show updated categories
         await loadTransactions();
+        
+        // Reload dashboard if we're on it
+        if (currentPage === 'dashboard') {
+            await loadDashboard();
+        }
     } catch (error) {
         console.error('Recategorization error:', error);
         alert('Failed to recategorize transactions: ' + error.message);
